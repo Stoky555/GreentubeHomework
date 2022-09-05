@@ -1,4 +1,5 @@
-﻿using MongoDB.Bson.Serialization.Attributes;
+﻿using Homework.Model.Transaction.Enum;
+using MongoDB.Bson.Serialization.Attributes;
 
 namespace Homework.Model.Transaction
 {
@@ -16,5 +17,9 @@ namespace Homework.Model.Transaction
         public decimal Amount { get; set; }
         [BsonElement("createdAt")]
         public DateTime CreatedAt { get; set; }
+        [BsonElement("transactionResult")]
+        public TransactionResult TransactionResult { get; set; }
+        [BsonElement("errorMessage")]
+        public string ErrorMessage { get; set; }
     }
 }

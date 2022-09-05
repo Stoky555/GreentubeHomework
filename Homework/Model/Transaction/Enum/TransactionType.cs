@@ -1,7 +1,7 @@
 ﻿using MongoDB.Bson.Serialization.Attributes;
 using MongoDB.Bson;
 
-namespace Homework.Model.Transaction
+namespace Homework.Model.Transaction.Enum
 {
     public enum TransactionType
     {
