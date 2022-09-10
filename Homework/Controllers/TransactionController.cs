@@ -16,22 +16,22 @@ namespace Homework.Controllers
             _transactionService = transactionService;
         }
 
-        [HttpPut("{guid:guid}")]
+        [HttpPut("Win/{guid:guid}")]
         public async Task<IActionResult> Win(decimal amount, [FromBody] Guid guid)
         {
-            return Ok(_transactionService.WinAsync(amount, guid));
+            return Ok(await _transactionService.WinAsync(amount, guid));
         }
 
-        [HttpPut("{guid:guid}")]
+        [HttpPut("Stake/{guid:guid}")]
         public async Task<IActionResult> Stake(decimal amount, [FromBody] Guid guid)
         {
-            return Ok(_transactionService.StakeAsync(amount, guid));
+            return Ok(await _transactionService.StakeAsync(amount, guid));
         }
 
-        [HttpPut("{guid:guid}")]
+        [HttpPut("Deposit/{guid:guid}")]
         public async Task<IActionResult> Deposit(decimal amount, [FromBody] Guid guid)
         {
-            return Ok(_transactionService.DepositAsync(amount, guid));
+            return Ok(await _transactionService.DepositAsync(amount, guid));
         }
     }
 }
