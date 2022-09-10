@@ -6,6 +6,8 @@ using Homework.Model.Transaction.Enum;
 using Microsoft.Extensions.Options;
 using MongoDB.Driver;
 using System;
+using System.Numerics;
+using System.Transactions;
 
 namespace Homework.Services
 {
@@ -38,7 +40,10 @@ namespace Homework.Services
                 var data = await _playerCollection.FindAsync(player => player.Guid == playerGuid);
                 var player = data.FirstOrDefault();
 
-                //TODO: deposit an amount to player
+                player.Balance += amount;
+
+                await _playerCollection.ReplaceOneAsync(x => x.Guid == playerGuid, player);
+                serviceResponse.Message = "Accepted";
 
                 transaction.TransactionResult = TransactionResult.Succeeded;
                 await _transactionCollection.InsertOneAsync(transaction);
@@ -47,13 +52,7 @@ namespace Homework.Services
             }
             catch (Exception ex)
             {
-                transaction.TransactionResult = TransactionResult.Failed;
-                transaction.ErrorMessage = ex.Message;
-                await _transactionCollection.InsertOneAsync(transaction);
-
-                serviceResponse.Success = false;
-                serviceResponse.Message = ex.Message;
-                return serviceResponse;
+                return await TransactionFailed(ex.Message, transaction);
             }
         }
 
@@ -78,11 +77,14 @@ namespace Homework.Services
                     await _transactionCollection.InsertOneAsync(transaction);
 
                     serviceResponse.Success = false;
-                    serviceResponse.Message = "User does not have enough balance to stake that amount.";
+                    serviceResponse.Message = "Rejected";
                     return serviceResponse;
                 }
 
-                //TODO: stake an amount from player
+                player.Balance -= amount;
+
+                await _playerCollection.ReplaceOneAsync(x => x.Guid == playerGuid, player);
+                serviceResponse.Message = "Accepted";
 
                 transaction.TransactionResult = TransactionResult.Succeeded;
                 await _transactionCollection.InsertOneAsync(transaction);
@@ -91,13 +93,7 @@ namespace Homework.Services
             }
             catch (Exception ex)
             {
-                transaction.TransactionResult = TransactionResult.Failed;
-                transaction.ErrorMessage = ex.Message;
-                await _transactionCollection.InsertOneAsync(transaction);
-
-                serviceResponse.Success = false;
-                serviceResponse.Message = ex.Message;
-                return serviceResponse;
+                return await TransactionFailed(ex.Message, transaction);
             }
         }
 
@@ -114,23 +110,36 @@ namespace Homework.Services
 
             try
             {
+                var data = await _playerCollection.FindAsync(player => player.Guid == playerGuid);
+                var player = data.FirstOrDefault();
+
+                player.Balance += amount;
+
+                await _playerCollection.ReplaceOneAsync(x => x.Guid == playerGuid, player);
+                serviceResponse.Message = "Accepted";
+
                 transaction.TransactionResult = TransactionResult.Succeeded;
                 await _transactionCollection.InsertOneAsync(transaction);
-
-                //TODO: deposit an amount to player
 
                 return serviceResponse;
             }
             catch (Exception ex)
             {
-                transaction.TransactionResult = TransactionResult.Failed;
-                transaction.ErrorMessage = ex.Message;
-                await _transactionCollection.InsertOneAsync(transaction);
-
-                serviceResponse.Success = false;
-                serviceResponse.Message = ex.Message;
-                return serviceResponse;
+                return await TransactionFailed(ex.Message, transaction);
             }
+        }
+
+        private async Task<ServiceResponse<string>> TransactionFailed(string errorMessage, TransactionModel transaction)
+        {
+            transaction.TransactionResult = TransactionResult.Failed;
+            transaction.ErrorMessage = errorMessage;
+            await _transactionCollection.InsertOneAsync(transaction);
+
+            var result = new ServiceResponse<string>();
+            result.Success = false;
+            result.Message = errorMessage;
+
+            return result;
         }
     }
 }
