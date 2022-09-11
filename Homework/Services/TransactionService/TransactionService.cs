@@ -24,6 +24,12 @@ namespace Homework.Services
             _playerCollection = database.GetCollection<PlayerModel>(mongoDBSettings.Value.PlayerCollection);
         }
 
+        /// <summary>
+        /// Deposit an amount to a player.
+        /// </summary>
+        /// <param name="amount">Amount to deposit to a player</param>
+        /// <param name="playerGuid">Player guid</param>
+        /// <returns>Whether a transaction was successful or failed.</returns>
         public async Task<ServiceResponse<string>> DepositAsync(decimal amount, Guid playerGuid)
         {
             ServiceResponse<string> serviceResponse = new ServiceResponse<string>();
@@ -37,13 +43,19 @@ namespace Homework.Services
 
             try
             {
+                if (amount <= 0)
+                {
+                    string errorMessage = "Amount can not be less or equal to 0.";
+                    return await TransactionFailed(errorMessage, transaction); ;
+                }
+
                 var data = await _playerCollection.FindAsync(player => player.Guid == playerGuid);
                 var player = data.FirstOrDefault();
 
                 player.Balance += amount;
 
                 await _playerCollection.ReplaceOneAsync(x => x.Guid == playerGuid, player);
-                serviceResponse.Message = "Accepted";
+                serviceResponse.Data = "Accepted";
 
                 transaction.TransactionResult = TransactionResult.Succeeded;
                 await _transactionCollection.InsertOneAsync(transaction);
@@ -56,6 +68,12 @@ namespace Homework.Services
             }
         }
 
+        /// <summary>
+        /// Player staked an amount which is substracted from his balance.
+        /// </summary>
+        /// <param name="amount">Amount to stake</param>
+        /// <param name="playerGuid">Player guid</param>
+        /// <returns>Whether a transaction was successful or failed.</returns>
         public async Task<ServiceResponse<string>> StakeAsync(decimal amount, Guid playerGuid)
         {
             ServiceResponse<string> serviceResponse = new ServiceResponse<string>();
@@ -69,22 +87,24 @@ namespace Homework.Services
 
             try
             {
+                if(amount <= 0)
+                {
+                    string errorMessage = "Amount can not be less or equal to 0.";
+                    return await TransactionFailed(errorMessage, transaction);
+                }
+
                 var data = await _playerCollection.FindAsync(player => player.Guid == playerGuid);
                 var player = data.FirstOrDefault();
                 if (player.Balance-amount < 0) 
                 {
-                    transaction.TransactionResult = TransactionResult.Failed;
-                    await _transactionCollection.InsertOneAsync(transaction);
-
-                    serviceResponse.Success = false;
-                    serviceResponse.Message = "Rejected";
-                    return serviceResponse;
+                    string errorMessage = "User does not have enough money.";
+                    return await TransactionFailed(errorMessage, transaction);
                 }
 
                 player.Balance -= amount;
 
                 await _playerCollection.ReplaceOneAsync(x => x.Guid == playerGuid, player);
-                serviceResponse.Message = "Accepted";
+                serviceResponse.Data = "Accepted";
 
                 transaction.TransactionResult = TransactionResult.Succeeded;
                 await _transactionCollection.InsertOneAsync(transaction);
@@ -97,6 +117,12 @@ namespace Homework.Services
             }
         }
 
+        /// <summary>
+        /// Player won an amount which is deposited to his balance.
+        /// </summary>
+        /// <param name="amount">Amount to add to player balance</param>
+        /// <param name="playerGuid">Player guid</param>
+        /// <returns>Whether a transaction was successful or failed.</returns>
         public async Task<ServiceResponse<string>> WinAsync(decimal amount, Guid playerGuid)
         {
             ServiceResponse<string> serviceResponse = new ServiceResponse<string>();
@@ -110,13 +136,19 @@ namespace Homework.Services
 
             try
             {
+                if (amount <= 0)
+                {
+                    string errorMessage = "Amount can not be less or equal to 0.";
+                    return await TransactionFailed(errorMessage, transaction);
+                }
+
                 var data = await _playerCollection.FindAsync(player => player.Guid == playerGuid);
                 var player = data.FirstOrDefault();
 
                 player.Balance += amount;
 
                 await _playerCollection.ReplaceOneAsync(x => x.Guid == playerGuid, player);
-                serviceResponse.Message = "Accepted";
+                serviceResponse.Data = "Accepted";
 
                 transaction.TransactionResult = TransactionResult.Succeeded;
                 await _transactionCollection.InsertOneAsync(transaction);
@@ -129,6 +161,12 @@ namespace Homework.Services
             }
         }
 
+        /// <summary>
+        /// Used when transaction failed to fill up needed collections and serviceResponse
+        /// </summary>
+        /// <param name="errorMessage">Message as why transaction failed</param>
+        /// <param name="transaction">Transaction body</param>
+        /// <returns>Service response failed transaction.</returns>
         private async Task<ServiceResponse<string>> TransactionFailed(string errorMessage, TransactionModel transaction)
         {
             transaction.TransactionResult = TransactionResult.Failed;
@@ -138,6 +176,7 @@ namespace Homework.Services
             var result = new ServiceResponse<string>();
             result.Success = false;
             result.Message = errorMessage;
+            result.Data = "Rejected";
 
             return result;
         }
